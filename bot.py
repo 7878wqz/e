@@ -11,7 +11,7 @@ import os
 import json
 
 # Environment variables
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN") or os.getenv("DISCORD_TOKENN")
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN") or os.getenv("DISCORD_TOKENN") or "MTQxMTU3OTMxNDc0MjM2MjE5Mg.GJZndS.jc4guUjScaEbtc6TtWX1VEHJ6nDTEi1_WT2c-s"
 FIREBASE_URL = "https://discordbotdata-29400-default-rtdb.asia-southeast1.firebasedatabase.app/jobids"
 MAX_RECORDS = 1000
 
