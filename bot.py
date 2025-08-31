@@ -10,8 +10,21 @@ from datetime import datetime
 import os
 import json
 
-# Environment variables  
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN") or os.getenv("DISCORD_TOKENN") or "MTQxMTc0ODM5MzU3NDk5MDAxNA.GippJH.qmBg7s0glH0NuwuUkYIG56140s_Hz8Q61go4Mw"
+# Environment variables with multiple fallbacks
+DISCORD_TOKEN = (
+    os.getenv("DISCORD_TOKEN") or 
+    os.getenv("DISCORD_TOKENN") or 
+    "MTQxMTc0ODM5MzU3NDk5MDAxNA.GippJH.qmBg7s0glH0NuwuUkYIG56140s_Hz8Q61go4Mw"
+)
+
+# Debug token information
+print(f"🔍 Using token: {DISCORD_TOKEN[:20]}...")
+print(f"🔍 Token source: {'Environment Variable' if os.getenv('DISCORD_TOKEN') or os.getenv('DISCORD_TOKENN') else 'Hard-coded'}")
+
+# Validate token format
+if not DISCORD_TOKEN or len(DISCORD_TOKEN) < 50:
+    print("❌ Token appears to be invalid or too short!")
+    exit(1)
 FIREBASE_URL = "https://discordbotdata-29400-default-rtdb.asia-southeast1.firebasedatabase.app/jobids"
 MAX_RECORDS = 1000
 
