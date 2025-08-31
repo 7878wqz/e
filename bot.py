@@ -11,7 +11,7 @@ import os
 import json  # เพิ่มสำหรับ load JSON จาก env ถ้าต้องการ
 
 # ดึง token จาก env (set บน Railway)
-DISCORD_TOKEN = os.getenv("MTQxMTU3OTMxNDc0MjM2MjE5Mg.GiGlVb.OekBAJOa7mnEc3qbnjmvU4zp6JlUv3EdSIeNC8")
+DISCORD_TOKEN = "MTQxMTU3OTMxNDc0MjM2MjE5Mg.GiGlVb.OekBAJOa7mnEc3qbnjmvU4zp6JlUv3EdSIeNC8"
 
 # สำหรับ Firebase: ถ้าใช้ไฟล์ JSON, set path จาก env หรือ load จาก string
 FIREBASE_JSON_PATH = os.getenv("FIREBASE_JSON_PATH", "discordbotdata-29400-firebase-adminsdk-fbsvc-cdabe4a5ba.json")
