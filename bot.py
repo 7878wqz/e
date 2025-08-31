@@ -10,8 +10,8 @@ from datetime import datetime
 import os
 import json
 
-# Environment variables
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN") or os.getenv("DISCORD_TOKENN") or "MTQxMTU3OTMxNDc0MjM2MjE5Mg.GJZndS.jc4guUjScaEbtc6TtWX1VEHJ6nDTEi1_WT2c-s"
+# Environment variables  
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN") or os.getenv("DISCORD_TOKENN") or "MTQxMTU3OTMxNDc0MjM2MjE5Mg.GK3gSZ.4NsdQv_Nq7znaGyaEv7VviXA1OQiwNvEagV7Rw"
 FIREBASE_URL = "https://discordbotdata-29400-default-rtdb.asia-southeast1.firebasedatabase.app/jobids"
 MAX_RECORDS = 1000
 
@@ -198,6 +198,12 @@ if __name__ == "__main__":
             print("❌ LOGIN FAILED: Invalid Discord token!")
             print("Please check your DISCORD_TOKEN environment variable")
             print("Make sure it's a valid bot token from Discord Developer Portal")
+            print("\n🔍 Troubleshooting steps:")
+            print("1. Go to https://discord.com/developers/applications")
+            print("2. Select your application")
+            print("3. Go to 'Bot' section")
+            print("4. Click 'Reset Token'")
+            print("5. Copy the new token and update your code")
         except Exception as e:
             print(f"❌ Error starting bot: {e}")
     else:
