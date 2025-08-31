@@ -8,30 +8,189 @@ import requests
 import time
 from datetime import datetime
 import os
-import json  # เพิ่มสำหรับ load JSON จาก env ถ้าต้องการ
+import json
 
-# ดึง token จาก env (set บน Railway)
-DISCORD_TOKEN = "MTQxMTU3OTMxNDc0MjM2MjE5Mg.GiGlVb.OekBAJOa7mnEc3qbnjmvU4zp6JlUv3EdSIeNC8"
-
-# สำหรับ Firebase: ถ้าใช้ไฟล์ JSON, set path จาก env หรือ load จาก string
-FIREBASE_JSON_PATH = os.getenv("FIREBASE_JSON_PATH", "discordbotdata-29400-firebase-adminsdk-fbsvc-cdabe4a5ba.json")
+# Environment variables
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 FIREBASE_URL = "https://discordbotdata-29400-default-rtdb.asia-southeast1.firebasedatabase.app/jobids"
 MAX_RECORDS = 1000
 
 # Initialize Firebase
-if not firebase_admin._apps:
-    # ถ้าใช้ไฟล์ JSON ใน repo
-    cred = credentials.Certificate(FIREBASE_JSON_PATH)
-    # ถ้าอยาก secure กว่า: load JSON จาก env var (string)
-    # FIREBASE_SERVICE_ACCOUNT = os.getenv("FIREBASE_SERVICE_ACCOUNT")
-    # if FIREBASE_SERVICE_ACCOUNT:
-    #     cred = credentials.Certificate(json.loads(FIREBASE_SERVICE_ACCOUNT))
-    firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_URL.rsplit('/',1)[0]})
-ref = db.reference('jobids')
+try:
+    # Try to get Firebase credentials from environment variable first
+    firebase_creds = os.getenv("FIREBASE_CREDENTIALS")
+    
+    if firebase_creds:
+        # If credentials are in environment variable (Railway preferred method)
+        cred_dict = json.loads(firebase_creds)
+        cred = credentials.Certificate(cred_dict)
+    else:
+        # Fallback to JSON file (for local development)
+        FIREBASE_JSON = "discordbotdata-29400-firebase-adminsdk-fbsvc-cdabe4a5ba.json"
+        cred = credentials.Certificate(FIREBASE_JSON)
+    
+    # Initialize Firebase if not already initialized
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': FIREBASE_URL.rsplit('/',1)[0]
+        })
+    
+    ref = db.reference('jobids')
+    print("✅ Firebase initialized successfully")
 
-# ... (ส่วนที่เหลือของโค้ดเหมือนเดิม: intents, bot, cleanup_old_records, delete_all_records, on_ready, on_message, commands ต่าง ๆ)
+except Exception as e:
+    print(f"❌ Firebase initialization error: {e}")
+    ref = None
 
-if DISCORD_TOKEN:
-    bot.run(DISCORD_TOKEN)
-else:
-    print("❌ ERROR: No DISCORD_TOKEN found!")
+# Initialize Discord Bot
+try:
+    intents = discord.Intents.default()
+    intents.message_content = True
+    bot = commands.Bot(command_prefix='!', intents=intents)
+    print("✅ Discord bot initialized successfully")
+except Exception as e:
+    print(f"❌ Discord bot initialization error: {e}")
+    exit(1)
+
+def cleanup_old_records():
+    """Clean up old records to maintain MAX_RECORDS limit"""
+    try:
+        response = requests.get(f"{FIREBASE_URL}.json", timeout=10)
+        if response.status_code != 200: 
+            return
+        
+        all_data = response.json() or {}
+        total_records = len(all_data)
+        
+        if total_records <= MAX_RECORDS: 
+            return
+
+        # Sort by timestamp and keep only recent records
+        sorted_records = sorted(all_data.items(), key=lambda x: x[1].get('timestamp', 0))
+        records_to_delete = sorted_records[:-MAX_RECORDS]
+        
+        for key, _ in records_to_delete:
+            try:
+                requests.delete(f"{FIREBASE_URL}/{key}.json", timeout=5)
+            except Exception as e:
+                print(f"Error deleting record {key}: {e}")
+                
+    except Exception as e:
+        print(f"Error in cleanup_old_records: {e}")
+
+def delete_all_records():
+    """Delete all records from Firebase"""
+    try:
+        response = requests.delete(f"{FIREBASE_URL}.json", timeout=10)
+        if response.status_code == 200:
+            print("All records deleted successfully")
+    except Exception as e:
+        print(f"Error deleting all records: {e}")
+
+@tasks.loop(minutes=30)
+async def auto_cleanup():
+    """Automatic cleanup task that runs every 30 minutes"""
+    try:
+        cleanup_old_records()
+        print("🧹 Auto cleanup completed")
+    except Exception as e:
+        print(f"Error in auto_cleanup: {e}")
+
+@bot.event
+async def on_ready():
+    """Event triggered when bot is ready"""
+    print(f'✅ {bot.user} พร้อมใช้งาน!')
+    if not auto_cleanup.is_running():
+        auto_cleanup.start()
+        print("🔄 Auto cleanup task started")
+
+@bot.event
+async def on_message(message):
+    """Event triggered when a message is sent"""
+    if message.author == bot.user: 
+        return
+    
+    if "jobid:" in message.content.lower():
+        try:
+            jobid = message.content.split("jobid:")[1].strip()
+            
+            if not jobid:
+                await message.channel.send("❌ JobID ไม่ถูกต้อง!")
+                return
+            
+            data = {
+                "id": jobid,
+                "timestamp": int(time.time()),
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "added_by": str(message.author),
+                "channel": str(message.channel)
+            }
+            
+            if ref:
+                ref.push(data)
+                await message.channel.send(f"✅ บันทึก JobID: {jobid} แล้ว!")
+                cleanup_old_records()
+            else:
+                await message.channel.send("❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้!")
+                
+        except Exception as e:
+            print(f"Error processing JobID: {e}")
+            await message.channel.send("❌ เกิดข้อผิดพลาดในการบันทึก JobID!")
+    
+    await bot.process_commands(message)
+
+@bot.command(name='ping')
+async def ping(ctx):
+    """Ping command to test bot responsiveness"""
+    await ctx.send("pong 🏓")
+
+@bot.command(name='stats')
+async def show_stats(ctx):
+    """Show database statistics"""
+    try:
+        response = requests.get(f"{FIREBASE_URL}.json", timeout=10)
+        if response.status_code == 200:
+            data = response.json() or {}
+            total = len(data)
+            await ctx.send(f"📊 Total JobIDs: {total}\nMax Allowed: {MAX_RECORDS}")
+        else:
+            await ctx.send("❌ ไม่สามารถดึงข้อมูลได้!")
+    except Exception as e:
+        print(f"Error in stats command: {e}")
+        await ctx.send("❌ ดึงข้อมูลไม่สำเร็จ")
+
+@bot.command(name='cleanup')
+async def manual_cleanup(ctx):
+    """Manual cleanup command"""
+    try:
+        cleanup_old_records()
+        await ctx.send("🧹 ทำความสะอาดเสร็จสิ้น!")
+    except Exception as e:
+        print(f"Error in manual cleanup: {e}")
+        await ctx.send("❌ เกิดข้อผิดพลาดในการทำความสะอาด!")
+
+@bot.command(name='clear_all')
+async def clear_all_data(ctx):
+    """Clear all data command"""
+    try:
+        delete_all_records()
+        await ctx.send("🗑️ ลบทั้งหมดเรียบร้อย!")
+    except Exception as e:
+        print(f"Error in clear_all command: {e}")
+        await ctx.send("❌ เกิดข้อผิดพลาดในการลบข้อมูล!")
+
+@bot.event
+async def on_error(event, *args, **kwargs):
+    """Global error handler"""
+    print(f"An error occurred in {event}: {args}, {kwargs}")
+
+# Main execution
+if __name__ == "__main__":
+    if DISCORD_TOKEN:
+        try:
+            bot.run(DISCORD_TOKEN)
+        except Exception as e:
+            print(f"❌ Error starting bot: {e}")
+    else:
+        print("❌ ERROR: No DISCORD_TOKEN found!")
+        print("Please set DISCORD_TOKEN environment variable")
