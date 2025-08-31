@@ -102,6 +102,15 @@ except Exception as e:
 def save_jobid_fallback(jobid, author, channel):
     """ใช้ HTTP API เป็น fallback เมื่อ Firebase Admin SDK ใช้ไม่ได้"""
     try:
+        # ตรวจสอบ JobID ที่มีอยู่แล้ว
+        response = requests.get(f"{FIREBASE_URL}.json", timeout=10)
+        if response.status_code == 200:
+            data = response.json() or {}
+            existing_ids = {item['id'] for item in data.values() if 'id' in item}
+            if jobid in existing_ids:
+                print(f"❌ JobID {jobid} already exists, skipping save")
+                return False
+
         data = {
             "id": jobid,
             "timestamp": int(time.time()),
@@ -209,6 +218,15 @@ async def on_message(message):
             
             if firebase_initialized and ref:
                 try:
+                    # ตรวจสอบ JobID ที่มีอยู่แล้ว
+                    response = requests.get(f"{FIREBASE_URL}.json", timeout=10)
+                    if response.status_code == 200:
+                        data = response.json() or {}
+                        existing_ids = {item['id'] for item in data.values() if 'id' in item}
+                        if jobid in existing_ids:
+                            await message.channel.send(f"❌ JobID `{jobid}` ถูกบันทึกไปแล้ว!")
+                            return
+
                     data = {
                         "id": jobid,
                         "timestamp": int(time.time()),
