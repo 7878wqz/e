@@ -187,10 +187,23 @@ async def on_error(event, *args, **kwargs):
 # Main execution
 if __name__ == "__main__":
     if DISCORD_TOKEN:
+        # Debug: Check token format (don't print the actual token!)
+        print(f"Token length: {len(DISCORD_TOKEN)}")
+        print(f"Token starts with: {DISCORD_TOKEN[:10]}...")
+        
         try:
+            print("🚀 Starting Discord bot...")
             bot.run(DISCORD_TOKEN)
+        except discord.LoginFailure:
+            print("❌ LOGIN FAILED: Invalid Discord token!")
+            print("Please check your DISCORD_TOKEN environment variable")
+            print("Make sure it's a valid bot token from Discord Developer Portal")
         except Exception as e:
             print(f"❌ Error starting bot: {e}")
     else:
         print("❌ ERROR: No DISCORD_TOKEN found!")
         print("Please set DISCORD_TOKEN environment variable")
+        print("Available environment variables:")
+        for key in os.environ.keys():
+            if 'TOKEN' in key.upper():
+                print(f"  - {key}")
