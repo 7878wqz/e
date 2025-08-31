@@ -14,7 +14,7 @@ import json
 DISCORD_TOKEN = (
     os.getenv("DISCORD_TOKEN") or 
     os.getenv("DISCORD_TOKENN") or 
-    "MTQxMTc0ODM5MzU3NDk5MDAxNA.GippJH.qmBg7s0glH0NuwuUkYIG56140s_Hz8Q61go4Mw"
+    "MTQxMTc1MTMwMDMyODA2MzE0Nw.GemOiJ.qcJPcHY8hSm0QXvkrQI63XMxLY2pLO5Ecn-HH0"
 )
 
 # Debug token information
@@ -55,12 +55,16 @@ except Exception as e:
     print(f"❌ Firebase initialization error: {e}")
     ref = None
 
-# Initialize Discord Bot
+# Initialize Discord Bot (ensure only one instance)
+bot_instance = None
+
 try:
-    intents = discord.Intents.default()
-    intents.message_content = True
-    bot = commands.Bot(command_prefix='!', intents=intents)
-    print("✅ Discord bot initialized successfully")
+    if not bot_instance:
+        intents = discord.Intents.default()
+        intents.message_content = True
+        bot = commands.Bot(command_prefix='!', intents=intents)
+        bot_instance = bot
+        print("✅ Discord bot initialized successfully")
 except Exception as e:
     print(f"❌ Discord bot initialization error: {e}")
     exit(1)
@@ -206,7 +210,8 @@ if __name__ == "__main__":
         
         try:
             print("🚀 Starting Discord bot...")
-            bot.run(DISCORD_TOKEN)
+            # Ensure bot runs only once
+            bot.run(DISCORD_TOKEN, reconnect=True)
         except discord.LoginFailure:
             print("❌ LOGIN FAILED: Invalid Discord token!")
             print("Please check your DISCORD_TOKEN environment variable")
@@ -217,8 +222,13 @@ if __name__ == "__main__":
             print("3. Go to 'Bot' section")
             print("4. Click 'Reset Token'")
             print("5. Copy the new token and update your code")
+            print("6. Make sure MESSAGE CONTENT INTENT is enabled")
+        except KeyboardInterrupt:
+            print("👋 Bot stopped by user")
         except Exception as e:
             print(f"❌ Error starting bot: {e}")
+            import traceback
+            traceback.print_exc()
     else:
         print("❌ ERROR: No DISCORD_TOKEN found!")
         print("Please set DISCORD_TOKEN environment variable")
