@@ -38,7 +38,7 @@ if not DISCORD_TOKEN or len(DISCORD_TOKEN) < 50:
     exit(1)
 
 FIREBASE_URL = "https://discordbotdata-29400-default-rtdb.asia-southeast1.firebasedatabase.app/jobids"
-MAX_RECORDS = 1000
+MAX_RECORDS = 2000
 
 # Initialize Firebase - แก้ไขส่วนนี้
 firebase_initialized = False
